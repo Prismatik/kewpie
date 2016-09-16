@@ -1,0 +1,17 @@
+version: '2'
+services:
+  kewpie:
+    build: .
+    environment:
+      RABBIT_URL: amqp://rabbitmq
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - rabbitmq
+    links:
+      - rabbitmq
+  rabbitmq:
+    image: rabbitmq:management
+    ports:
+      - 15672:15672

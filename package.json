@@ -1,0 +1,35 @@
+{
+  "name": "kewpie",
+  "version": "0.0.1",
+  "description": "A simple queue wrapper",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "dockertest": "docker-compose run kewpie npm test",
+    "dockerwatch": "docker-compose run kewpie npm test -- --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Prismatik/kewpie.git"
+  },
+  "keywords": [
+    "queue",
+    "rabbitmq",
+    "task",
+    "job"
+  ],
+  "author": "david@banham.id.au",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Prismatik/kewpie/issues"
+  },
+  "homepage": "https://github.com/Prismatik/kewpie#readme",
+  "devDependencies": {
+    "bandname": "^1.0.0",
+    "mocha": "^3.0.2",
+    "must": "^0.13.2"
+  },
+  "dependencies": {
+    "amqplib": "^0.4.2"
+  }
+}
