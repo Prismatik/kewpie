@@ -30,6 +30,7 @@
     "must": "^0.13.2"
   },
   "dependencies": {
-    "amqplib": "^0.4.2"
+    "amqplib": "^0.4.2",
+    "uuid": "^2.0.3"
   }
 }

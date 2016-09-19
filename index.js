@@ -1,4 +1,5 @@
 const amqp = require('amqplib');
+const uuid = require('uuid');
 
 const queueOpts = {
   maxPriority: 10,
@@ -35,7 +36,13 @@ function publish(queue, task, opts = {}) {
   });
 };
 
+function unsubscribe(tag) {
+  return channel.cancel(tag);
+};
+
 function subscribe(queue, handler) {
+  const consumerTag = uuid.v4();
+
   return new Promise((resolve, reject) => {
     if (!channel) return delay()
     .then(() => {
@@ -57,13 +64,16 @@ function subscribe(queue, handler) {
       } catch (e) {
         channel.nack(msg);
       }
-    });
+    }, {consumerTag});
+
+    return resolve(consumerTag);
   });
 };
 
 module.exports = {
   publish,
-  subscribe
+  subscribe,
+  unsubscribe
 };
 
 function delay() {
