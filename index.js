@@ -66,7 +66,7 @@ function subscribe(queue, handler) {
       }
     }, {consumerTag});
 
-    return resolve(consumerTag);
+    return resolve({consumerTag});
   });
 };
 
