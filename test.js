@@ -21,10 +21,14 @@ describe('kewpie', () => {
     });
   });
   describe('subscribe', () => {
-    let taskName;
+    let taskName, consumerTag;
 
     beforeEach(() => {
       taskName = bandname();
+    });
+
+    afterEach(() => {
+      return kewpie.unsubscribe(consumerTag);
     });
 
     it('should be handed a job', (done) => {
@@ -33,6 +37,9 @@ describe('kewpie', () => {
         done();
         return Promise.resolve();
       })
+      .then(tag => {
+        consumerTag = tag;
+      });
       kewpie.publish(queueName, {name: taskName});
     });
 
@@ -48,6 +55,9 @@ describe('kewpie', () => {
           return Promise.reject();
         }
       })
+      .then(tag => {
+        consumerTag = tag;
+      });
       kewpie.publish(queueName, {name: taskName});
     });
   });
