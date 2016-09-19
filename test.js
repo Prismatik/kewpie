@@ -5,22 +5,19 @@ const bandname = require('bandname');
 describe('kewpie', () => {
     let queueName;
 
-    beforeEach(() => {
-      queueName = bandname();
-    });
-  describe('create', () => {
+  describe('publish', () => {
     it('should queue a task', () => {
-      return kewpie.create(queueName, {
+      return kewpie.publish(queueName, {
         oh: 'hai'
       });
     });
 
     it('should complain about a falsy task', () => {
-      return kewpie.create(queueName, '').must.reject.to.equal('Task body is blank');
+      return kewpie.publish(queueName, '').must.reject.to.equal('Task body is blank');
     });
 
     it('should complain about a falsy queue name', () => {
-      return kewpie.create('', 'hi').must.reject.to.equal('Queue name is blank');
+      return kewpie.publish('', 'hi').must.reject.to.equal('Queue name is blank');
     });
   });
   describe('subscribe', () => {
@@ -36,7 +33,7 @@ describe('kewpie', () => {
         done();
         return Promise.resolve();
       })
-      kewpie.create(queueName, {name: taskName});
+      kewpie.publish(queueName, {name: taskName});
     });
 
     it('should requeue a failed job', (done) => {
@@ -51,7 +48,7 @@ describe('kewpie', () => {
           return Promise.reject();
         }
       })
-      kewpie.create(queueName, {name: taskName});
+      kewpie.publish(queueName, {name: taskName});
     });
   });
 });

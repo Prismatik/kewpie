@@ -14,13 +14,13 @@ amqp.connect(process.env.RABBIT_URL).then(conn => {
   throw e;
 });
 
-function create(queue, task, opts = {}) {
+function publish(queue, task, opts = {}) {
   if (!queue) return Promise.reject('Queue name is blank');
   if (!task) return Promise.reject('Task body is blank');
 
   if (!channel) return delay()
   .then(() => {
-    return create(queue, task, opts);
+    return publish(queue, task, opts);
   });
 
   channel.assertQueue(queue, queueOpts);
@@ -62,7 +62,7 @@ function subscribe(queue, handler) {
 };
 
 module.exports = {
-  create,
+  publish,
   subscribe
 };
 
