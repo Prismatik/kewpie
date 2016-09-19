@@ -1,9 +1,19 @@
 require('must/register');
 const kewpie = require('./index');
 const bandname = require('bandname');
+const amqp = require('amqplib');
 
 describe('kewpie', () => {
-    let queueName;
+  const queueName = bandname();
+
+  afterEach(() => {
+    return amqp.connect(process.env.RABBIT_URL)
+    .then(conn => {
+      return conn.createChannel().then(ch => {
+        return ch.purgeQueue(queueName);
+      });
+    });
+  });
 
   describe('publish', () => {
     it('should queue a task', () => {
