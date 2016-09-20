@@ -8,6 +8,7 @@ const queueOpts = {
 
 let channel;
 let connectionAttempts = 0;
+const defaultExpiration = 1000 * 60 * 60; // 1 hour
 
 function connect(rabbitUrl) {
   return amqp.connect(rabbitUrl).then(conn => {
@@ -35,7 +36,14 @@ function publish(queue, task, opts = {}) {
   });
 
   channel.assertQueue(queue, queueOpts);
-  const innerOpts = {priority: opts.priority || 0, persistent: true};
+  const innerOpts = {
+    priority: opts.priority || 0,
+    persistent: true,
+    expiration: opts.expiration || defaultExpiration
+  };
+
+  if (opts.expiration === null) delete innerOpts.expiration;
+
   const buf = new Buffer(JSON.stringify(task));
 
   return new Promise((resolve, reject) => {
