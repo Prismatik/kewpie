@@ -60,13 +60,14 @@ function unsubscribe(tag) {
 };
 
 function subscribe(queue, handler) {
+  if (!channel) return delay()
+  .then(() => {
+    return subscribe(queue, handler);
+  });
+
   const consumerTag = uuid.v4();
 
   return new Promise((resolve, reject) => {
-    if (!channel) return delay()
-    .then(() => {
-      return subscribe(queue, handler);
-    });
 
     channel.assertQueue(queue, queueOpts);
     channel.prefetch(process.env.MAX_CONCURRENT_JOBS || 1);
