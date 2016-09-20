@@ -7,13 +7,24 @@ const queueOpts = {
 };
 
 let channel;
-amqp.connect(process.env.RABBIT_URL).then(conn => {
-  conn.createConfirmChannel().then(ch => {
-    channel = ch;
+let connectionAttempts = 0;
+
+function connect() {
+  amqp.connect(process.env.RABBIT_URL).then(conn => {
+    conn.createConfirmChannel().then(ch => {
+      channel = ch;
+    });
+  }).catch(e => {
+    connectionAttempts++;
+    if (connectionAttempts > 10) {
+      throw e;
+    } else {
+      setTimeout(connect, 500);
+    }
   });
-}).catch(e => {
-  throw e;
-});
+};
+
+connect();
 
 function publish(queue, task, opts = {}) {
   if (!queue) return Promise.reject('Queue name is blank');

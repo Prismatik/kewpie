@@ -3,7 +3,8 @@ const kewpie = require('./index');
 const bandname = require('bandname');
 const amqp = require('amqplib');
 
-describe('kewpie', () => {
+describe('kewpie', function() {
+  this.timeout(5000);
   const queueName = bandname();
 
   afterEach(() => {
