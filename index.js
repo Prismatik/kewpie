@@ -9,8 +9,8 @@ const queueOpts = {
 let channel;
 let connectionAttempts = 0;
 
-function connect() {
-  amqp.connect(process.env.RABBIT_URL).then(conn => {
+function connect(rabbitUrl) {
+  return amqp.connect(rabbitUrl).then(conn => {
     conn.createConfirmChannel().then(ch => {
       channel = ch;
     });
@@ -19,12 +19,11 @@ function connect() {
     if (connectionAttempts > 10) {
       throw e;
     } else {
-      setTimeout(connect, 500);
+      return delay()
+      .then(() => connect(rabbitUrl));
     }
   });
 };
-
-connect();
 
 function publish(queue, task, opts = {}) {
   if (!queue) return Promise.reject('Queue name is blank');
@@ -84,7 +83,8 @@ function subscribe(queue, handler) {
 module.exports = {
   publish,
   subscribe,
-  unsubscribe
+  unsubscribe,
+  connect
 };
 
 function delay() {

@@ -3,9 +3,13 @@ const kewpie = require('./index');
 const bandname = require('bandname');
 const amqp = require('amqplib');
 
-describe('kewpie', function() {
-  this.timeout(5000);
+describe('kewpie', () => {
   const queueName = bandname();
+
+  before(function() {
+    this.timeout(5000);
+    return kewpie.connect(process.env.RABBIT_URL);
+  });
 
   afterEach(() => {
     return amqp.connect(process.env.RABBIT_URL)
