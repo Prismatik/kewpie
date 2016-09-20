@@ -16,19 +16,27 @@ let channel, connection;
 let connectionAttempts = 0;
 const defaultExpiration = 1000 * 60 * 60; // 1 hour
 
-function connect(rabbitUrl) {
+function connect(rabbitUrl, queues) {
   return amqp.connect(rabbitUrl).then(conn => {
     connection = conn;
     conn.createConfirmChannel().then(ch => {
-      ch.assertExchange(defaultDeadLetterExchange, 'direct', {durable: true})
+
+      const queueProms = queues.map(queue => {
+        return ch.assertQueue(queue, queueOpts);
+      });
+
+      return Promise.all(queueProms)
       .then(() => {
-        return ch.assertQueue(defaultDeadLetterQueue, {durable: true});
-      }).then(() => {
-        return ch.bindQueue(defaultDeadLetterQueue, defaultDeadLetterExchange, defaultDeadLetterQueue);
-      }).then(() => {
-        channel = ch;
-      }).catch(e => {
-        throw e;
+        ch.assertExchange(defaultDeadLetterExchange, 'direct', {durable: true})
+        .then(() => {
+          return ch.assertQueue(defaultDeadLetterQueue, {durable: true});
+        }).then(() => {
+          return ch.bindQueue(defaultDeadLetterQueue, defaultDeadLetterExchange, defaultDeadLetterQueue);
+        }).then(() => {
+          channel = ch;
+        }).catch(e => {
+          throw e;
+        });
       });
     });
   }).catch(e => {
@@ -51,7 +59,6 @@ function publish(queue, task, opts = {}) {
     return publish(queue, task, opts);
   });
 
-  channel.assertQueue(queue, queueOpts);
   const innerOpts = {
     priority: opts.priority || 0,
     persistent: true,

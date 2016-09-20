@@ -8,7 +8,7 @@ describe('kewpie', () => {
 
   before(function() {
     this.timeout(5000);
-    return kewpie.connect(process.env.RABBIT_URL);
+    return kewpie.connect(process.env.RABBIT_URL, [queueName]);
   });
 
   afterEach(() => {
