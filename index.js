@@ -84,25 +84,27 @@ function subscribe(queue, handler) {
 
   return new Promise((resolve, reject) => {
 
-    channel.assertQueue(queue, queueOpts);
-    channel.prefetch(process.env.MAX_CONCURRENT_JOBS || 1);
+    channel.assertQueue(queue, queueOpts)
+    .then(() => {
+      channel.prefetch(process.env.MAX_CONCURRENT_JOBS || 1);
 
-    channel.consume(queue, function(msg) {
-      try {
-        handler(JSON.parse(msg.content.toString()))
-        .then(() => {
-          channel.ack(msg);
-        })
-        .catch(({requeue = false}) => {
-          channel.nack(msg, false, requeue);
-        });
-      } catch (e) {
-        // The only time this should be reached is when JSON.parse fails, so never requeue this kind of failure
-        channel.nack(msg, false, false);
-      }
-    }, {consumerTag});
+      channel.consume(queue, function(msg) {
+        try {
+          handler(JSON.parse(msg.content.toString()))
+          .then(() => {
+            channel.ack(msg);
+          })
+          .catch(({requeue = false}) => {
+            channel.nack(msg, false, requeue);
+          });
+        } catch (e) {
+          // The only time this should be reached is when JSON.parse fails, so never requeue this kind of failure
+          channel.nack(msg, false, false);
+        }
+      }, {consumerTag});
 
-    return resolve({consumerTag});
+      return resolve({consumerTag});
+    });
   });
 };
 
