@@ -67,7 +67,7 @@ describe('kewpie', () => {
           return Promise.resolve();
         } else {
           times++;
-          return Promise.reject();
+          return Promise.reject({requeue: true});
         }
       })
       .then(({consumerTag}) => {

@@ -78,11 +78,12 @@ function subscribe(queue, handler) {
         .then(() => {
           channel.ack(msg);
         })
-        .catch(() => {
-          channel.nack(msg);
+        .catch(({requeue = false}) => {
+          channel.nack(msg, false, requeue);
         });
       } catch (e) {
-        channel.nack(msg);
+        // The only time this should be reached is when JSON.parse fails, so never requeue this kind of failure
+        channel.nack(msg, false, false);
       }
     }, {consumerTag});
 
