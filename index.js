@@ -1,9 +1,15 @@
 const amqp = require('amqplib');
 const uuid = require('uuid');
 
+const defaultDeadLetterExchange = 'deadletters';
+const defaultDeadLetterQueue = 'deadletters';
+
+
 const queueOpts = {
   maxPriority: 10,
-  durable: true
+  durable: true,
+  deadLetterExchange: defaultDeadLetterExchange,
+  deadLetterRoutingKey: defaultDeadLetterQueue
 };
 
 let channel, connection;
@@ -14,7 +20,16 @@ function connect(rabbitUrl) {
   return amqp.connect(rabbitUrl).then(conn => {
     connection = conn;
     conn.createConfirmChannel().then(ch => {
-      channel = ch;
+      ch.assertExchange(defaultDeadLetterExchange, 'direct', {durable: true})
+      .then(() => {
+        return ch.assertQueue(defaultDeadLetterQueue, {durable: true});
+      }).then(() => {
+        return ch.bindQueue(defaultDeadLetterQueue, defaultDeadLetterExchange, defaultDeadLetterQueue);
+      }).then(() => {
+        channel = ch;
+      }).catch(e => {
+        throw e;
+      });
     });
   }).catch(e => {
     connectionAttempts++;
