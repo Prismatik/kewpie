@@ -6,12 +6,13 @@ const queueOpts = {
   durable: true
 };
 
-let channel;
+let channel, connection;
 let connectionAttempts = 0;
 const defaultExpiration = 1000 * 60 * 60; // 1 hour
 
 function connect(rabbitUrl) {
   return amqp.connect(rabbitUrl).then(conn => {
+    connection = conn;
     conn.createConfirmChannel().then(ch => {
       channel = ch;
     });
@@ -88,11 +89,16 @@ function subscribe(queue, handler) {
   });
 };
 
+function close() {
+  return connection.close();
+};
+
 module.exports = {
   publish,
   subscribe,
   unsubscribe,
-  connect
+  connect,
+  close
 };
 
 function delay() {
