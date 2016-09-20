@@ -8,8 +8,7 @@ const defaultDeadLetterQueue = 'deadletters';
 const queueOpts = {
   maxPriority: 10,
   durable: true,
-  deadLetterExchange: defaultDeadLetterExchange,
-  deadLetterRoutingKey: defaultDeadLetterQueue
+  deadLetterExchange: defaultDeadLetterExchange
 };
 
 let channel, connection;
@@ -31,7 +30,11 @@ function connect(rabbitUrl, queues) {
         .then(() => {
           return ch.assertQueue(defaultDeadLetterQueue, {durable: true});
         }).then(() => {
-          return ch.bindQueue(defaultDeadLetterQueue, defaultDeadLetterExchange, defaultDeadLetterQueue);
+          const bindProms = queues.map(queue => {
+            return ch.bindQueue(defaultDeadLetterQueue, defaultDeadLetterExchange, queue);
+          });
+
+          return Promise.all(bindProms);
         }).then(() => {
           channel = ch;
         }).catch(e => {
