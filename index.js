@@ -1,7 +1,3 @@
-/**
- * Provides an easy wrapper and good defaults over RabbitMQ
- * @module Kewpie
- */
 const amqp = require('amqplib');
 const uuid = require('uuid');
 
@@ -17,15 +13,9 @@ const blankTaskError = new Error('Task body is blank');
 /**
  * Return an instance of Kewpie
  * @constructor
- * @param {Object} [passedOpts] - A set of options to override the defaults
- * @param {string} passedOpts.deadLetterExchange - The name of the exchange to expired and nacked messages to
- * @param {string} passedOpts.deadLetterQueue - The name of the queue that dead lettered messages will come to reside in after being routed from the dead letter exchange
- * @param {string} passedOpts.kewpie - The name of the main exchange all messages are `publish`ed to
- * @param {number} passedOpts.maxPriority - The maximum priority level that messages on queues may have
- * @param {number} passedOpts.defaultExpiration - The default expiration time for messages. This prevents unfulfillable tasks from clogging up the queue forever (in MS)
- * @param {number} passedOpts.maxConnectionAttempts - The maximum amount of times kewpie will attempt to connect to the RabbitMQ server before giving up and throwing
- * @param {number} passedOpts.delayMS - The delay in MS to wait between retrying operations before kewpie has successfully connected to the RabbitMQ server on initialisation
- * @returns {Promise}
+ * @module Kewpie
+ * @param {kewpieOpts} [passedOpts] - A set of options to override the defaults
+ * @returns {Kewpie}
  */
 function Kewpie(passedOpts = {}) {
   const defaultOpts = {
@@ -179,7 +169,7 @@ function Kewpie(passedOpts = {}) {
    * @module Kewpie/subscribe
    * @param {string} queue - The queue you wish to subscribe to
    * @param {function} handler - The queue you wish to subscribe to
-   * @returns {Promise}
+   * @returns {Consumer}
    */
   function subscribe(queue, handler) {
     if (!channel) {

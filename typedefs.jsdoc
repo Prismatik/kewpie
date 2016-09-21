@@ -1,0 +1,28 @@
+/**
+ * @typedef {Object} kewpieOpts
+ * @property {string} passedOpts.deadLetterExchange - The name of the exchange to expired and nacked messages to
+ * @property {string} passedOpts.deadLetterQueue - The name of the queue that dead lettered messages will come to reside in after being routed from the dead letter exchange
+ * @property {string} passedOpts.kewpie - The name of the main exchange all messages are `publish`ed to
+ * @property {number} passedOpts.maxPriority - The maximum priority level that messages on queues may have
+ * @property {number} passedOpts.defaultExpiration - The default expiration time for messages. This prevents unfulfillable tasks from clogging up the queue forever (in MS)
+ * @property {number} passedOpts.maxConnectionAttempts - The maximum amount of times kewpie will attempt to connect to the RabbitMQ server before giving up and throwing
+ * @property {number} passedOpts.delayMS - The delay in MS to wait between retrying operations before kewpie has successfully connected to the RabbitMQ server on initialisation
+ */
+
+/**
+ * @typedef {Object} Kewpie
+ * @property {function} publish
+ * @property {function} subscribe
+ * @property {function} unsubscribe
+ * @property {function} connect
+ * @property {function} close
+ * @property {Object} errors - The possible errors that can be returned from methods
+ * @property {Error} errors.blankQueueError - The error returned if the passed queue name is blank
+ * @property {Error} errors.blankTaskError - The error returned if the passed task is blank
+ * @property {Object<kewpieOpts>} opts - The resolved options that Kewpie is instantiated with
+ */
+
+/**
+ * @typedef {Promise} Consumer
+ * @property {string} consumerTag - A unique identifier for a consumer/subscriber
+ */

@@ -8,7 +8,7 @@
     "test": "mocha && npm run lint",
     "dockertest": "docker-compose run kewpie npm test",
     "dockerwatch": "docker-compose run kewpie npm test -- --watch",
-    "jsdoc": "jsdoc -d docs/api_jsdoc index.js"
+    "jsdoc": "jsdoc -d docs/api_jsdoc index.js typedefs.jsdoc"
   },
   "repository": {
     "type": "git",
