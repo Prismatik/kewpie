@@ -1,28 +1,29 @@
 const amqp = require('amqplib');
 const uuid = require('uuid');
 
-function kewpie() {
-  const defaultDeadLetterExchange = 'deadletters';
-  const defaultDeadLetterQueue = 'deadletters';
-  const defaultExchange = 'kewpie';
+function kewpie(passedOpts = {}) {
+  const defaultOpts = {
+    deadLetterExchange: 'deadletters',
+    deadLetterQueue: 'deadletters',
+    exchange: 'kewpie'
+  };
 
+  const opts = Object.assign({}, passedOpts, defaultOpts);
+
+  const { deadLetterExchange, deadLetterQueue, exchange } = opts;
 
   const queueOpts = {
     maxPriority: 10,
     durable: true,
-    deadLetterExchange: defaultDeadLetterExchange
+    deadLetterExchange
   };
 
   let channel, connection;
   let connectionAttempts = 0;
   const defaultExpiration = 1000 * 60 * 60; // 1 hour
 
-  function connect(rabbitUrl, queues, opts = {}) {
+  function connect(rabbitUrl, queues) {
     return amqp.connect(rabbitUrl).then(conn => {
-      deadLetterExchange = opts.deadLetterExchange || defaultDeadLetterExchange;
-      deadLetterQueue = opts.deadLetterQueue || defaultDeadLetterQueue;
-      exchange = opts.exchange || defaultExchange;
-
       connection = conn;
       conn.createConfirmChannel().then(ch => {
 
@@ -79,7 +80,7 @@ function kewpie() {
     const buf = new Buffer(JSON.stringify(task));
 
     return new Promise((resolve, reject) => {
-      channel.publish(defaultExchange, queue, buf, innerOpts, function(err) {
+      channel.publish(exchange, queue, buf, innerOpts, function(err) {
         if (err) return reject(err);
         return resolve(task);
       });
