@@ -36,8 +36,8 @@ function kewpie(passedOpts = {}) {
   function connect(rabbitUrl, queues) {
     return amqp.connect(rabbitUrl).then(conn => {
       connection = conn;
-      conn.createConfirmChannel().then(ch => {
-
+      return conn.createConfirmChannel()
+      .then(ch => {
         return ch.assertExchange(exchange, 'topic', {durable: true})
         .then(queues.map(queue => {
           return ch.assertQueue(queue, queueOpts)
