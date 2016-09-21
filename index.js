@@ -25,6 +25,7 @@ const blankTaskError = new Error('Task body is blank');
  * @param {number} passedOpts.defaultExpiration - The default expiration time for messages. This prevents unfulfillable tasks from clogging up the queue forever (in MS)
  * @param {number} passedOpts.maxConnectionAttempts - The maximum amount of times kewpie will attempt to connect to the RabbitMQ server before giving up and throwing
  * @param {number} passedOpts.delayMS - The delay in MS to wait between retrying operations before kewpie has successfully connected to the RabbitMQ server on initialisation
+ * @returns {Promise}
  */
 function Kewpie(passedOpts = {}) {
   const defaultOpts = {
@@ -64,6 +65,7 @@ function Kewpie(passedOpts = {}) {
    * @module Kewpie/connect
    * @param {string} rabbitUrl - The URL to connect to a rabbitMQ server, eg: amqp://localhost:15672
    * @param {string[]} queues - The queues to instantiate for later publishing or subscription
+   * @returns {Promise}
    */
   function connect(rabbitUrl, queues) {
     return amqp.connect(rabbitUrl)
@@ -85,6 +87,7 @@ function Kewpie(passedOpts = {}) {
    * Set up the queues and exchanges
    * @param {Object} ch - A channel returned from amqplib
    * @param {string[]} queues - The queues to instantiate for later publishing or subscription
+   * @returns {Promise}
    */
   function setup(ch, queues) {
     return ch.assertExchange(exchange, 'topic', { durable: true })
@@ -108,6 +111,7 @@ function Kewpie(passedOpts = {}) {
    * If the connection to RabbitMQ fails, wait a little bit then try again
    * @param {string} rabbitUrl - The URL to connect to a rabbitMQ server, eg: amqp://localhost:15672
    * @param {string[]} queues - The queues to instantiate for later publishing or subscription
+   * @returns {Promise}
    */
   function reconnect(rabbitUrl, queues) {
     return e => {
@@ -129,6 +133,7 @@ function Kewpie(passedOpts = {}) {
    * @param {Object} [opts] - A set of opts to override defaults
    * @param {number} opts.priority - The priority of the message (defaults to 0)
    * @param {number} opts.expiration - The expiration time of the message in MS
+   * @returns {Promise}
    */
   function publish(queue, task, opts = {}) {
     if (!queue) return Promise.reject(blankQueueError);
@@ -163,6 +168,7 @@ function Kewpie(passedOpts = {}) {
    * Unsubscribe a subscriber/handler from a queue
    * @module Kewpie/unsubscribe
    * @param {string} tag - The consumerTag of the subscriber
+   * @returns {Promise}
    */
   function unsubscribe(tag) {
     return channel.cancel(tag);
@@ -173,6 +179,7 @@ function Kewpie(passedOpts = {}) {
    * @module Kewpie/subscribe
    * @param {string} queue - The queue you wish to subscribe to
    * @param {function} handler - The queue you wish to subscribe to
+   * @returns {Promise}
    */
   function subscribe(queue, handler) {
     if (!channel) {
@@ -213,6 +220,7 @@ function Kewpie(passedOpts = {}) {
   /**
    * Close the connection to RabbitMQ
    * @module Kewpie/close
+   * @returns {Promise}
    */
   function close() {
     return connection.close();
