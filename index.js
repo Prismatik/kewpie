@@ -21,7 +21,7 @@ function connect(rabbitUrl, queues) {
     connection = conn;
     conn.createConfirmChannel().then(ch => {
 
-      return ch.assertExchange(defaultExchange, 'direct', {durable: true})
+      return ch.assertExchange(defaultExchange, 'topic', {durable: true})
       .then(queues.map(queue => {
         return ch.assertQueue(queue, queueOpts)
         .then(ch.bindQueue(queue, defaultExchange, queue));
