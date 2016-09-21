@@ -128,8 +128,9 @@ function kewpie(passedOpts = {}) {
             .then(() => {
               channel.ack(msg);
             })
-            .catch(({requeue = false}) => {
-              channel.nack(msg, false, requeue);
+            .catch((opts = {}) => {
+              opts.requeue = opts.requeue || false;
+              channel.nack(msg, false, opts.requeue);
             });
           } catch (e) {
             // The only time this should be reached is when JSON.parse fails, so never requeue this kind of failure
