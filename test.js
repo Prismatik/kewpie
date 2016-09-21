@@ -8,51 +8,55 @@ const kewpie = new Kewpie();
 describe('kewpie', () => {
   const queueName = bandname();
 
-  before(function() {
+  before(function () {
     this.timeout(5000);
     return kewpie.connect(process.env.RABBIT_URL, [queueName]);
   });
 
-  afterEach(() => {
-    return amqp.connect(process.env.RABBIT_URL)
-    .then(conn => {
-      return conn.createChannel().then(ch => {
-        return ch.purgeQueue(queueName)
-        .then(() => ch.purgeQueue(kewpie.opts.deadLetterQueue));
-      });
-    });
-  });
+  afterEach(() =>
+    amqp.connect(process.env.RABBIT_URL)
+    .then(conn =>
+      conn.createChannel().then(ch =>
+        ch.purgeQueue(queueName)
+        .then(() => ch.purgeQueue(kewpie.opts.deadLetterQueue))
+      )
+    )
+  );
 
   describe('publish', () => {
-    it('should queue a task', () => {
-      return kewpie.publish(queueName, {
+    it('should queue a task', () =>
+      kewpie.publish(queueName, {
         oh: 'hai'
-      });
-    });
+      })
+    );
 
-    it('should complain about a falsy task', () => {
-      return kewpie.publish(queueName, '').must.reject.to.equal(kewpie.errors.blankTaskError);
-    });
+    it('should complain about a falsy task', () =>
+      kewpie.publish(queueName, '').must.reject.to.equal(kewpie.errors.blankTaskError)
+    );
 
-    it('should complain about a falsy queue name', () => {
-      return kewpie.publish('', 'hi').must.reject.to.equal(kewpie.errors.blankQueueError);
-    });
+    it('should complain about a falsy queue name', () =>
+      kewpie.publish('', 'hi').must.reject.to.equal(kewpie.errors.blankQueueError)
+    );
   });
   describe('subscribe', () => {
-    let taskName, tag, channel;
+    let taskName;
+    let tag;
+    let channel;
 
     beforeEach(() => {
       taskName = bandname();
 
       return amqp.connect(process.env.RABBIT_URL)
       .then(conn => {
-        conn.createConfirmChannel().then(ch => channel = ch);
+        conn.createConfirmChannel().then(ch => {
+          channel = ch;
+        });
       });
     });
 
-    afterEach(() => {
-      return kewpie.unsubscribe(tag);
-    });
+    afterEach(() =>
+      kewpie.unsubscribe(tag)
+    );
 
     it('should be handed a job', (done) => {
       kewpie.subscribe(queueName, task => {
@@ -60,10 +64,10 @@ describe('kewpie', () => {
         done();
         return Promise.resolve();
       })
-      .then(({consumerTag}) => {
+      .then(({ consumerTag }) => {
         tag = consumerTag;
       });
-      kewpie.publish(queueName, {name: taskName});
+      kewpie.publish(queueName, { name: taskName });
     });
 
     it('should requeue a failed job', (done) => {
@@ -73,21 +77,20 @@ describe('kewpie', () => {
         if (times > 3) {
           done();
           return Promise.resolve();
-        } else {
-          times++;
-          return Promise.reject({requeue: true});
         }
+        times++;
+        return Promise.reject({ requeue: true });
       })
-      .then(({consumerTag}) => {
+      .then(({ consumerTag }) => {
         tag = consumerTag;
       });
-      kewpie.publish(queueName, {name: taskName});
+      kewpie.publish(queueName, { name: taskName });
     });
 
     it('should never pass a job with invalid JSON to the handler', (done) => {
-      kewpie.subscribe(queueName, task => {
+      kewpie.subscribe(queueName, () => {
         done(new Error('job was passed to subscribe handler'));
-      }).then(({consumerTag}) => {
+      }).then(({ consumerTag }) => {
         tag = consumerTag;
       });
 
@@ -96,21 +99,22 @@ describe('kewpie', () => {
         conn.createConfirmChannel().then(ch => {
           ch.sendToQueue(queueName, new Buffer('lol not json'), {}, err => {
             if (err) return done(err);
-            setTimeout(done, 500);
+            return setTimeout(done, 500);
           });
         });
       });
     });
 
     it('should never requeue a job with invalid json', (done) => {
-      kewpie.subscribe(queueName, task => {
+      kewpie.subscribe(queueName, () => {
         done(new Error('subscribe handler should never be called in this test'));
-      }).then(({consumerTag}) => {
+      }).then(({ consumerTag }) => {
         tag = consumerTag;
       });
 
       channel.sendToQueue(queueName, new Buffer('lol not json'), {}, err => {
         if (err) return done(err);
+        return null;
       });
 
       setTimeout(() => {
@@ -122,9 +126,9 @@ describe('kewpie', () => {
     });
 
     it('should send failed jobs to the dead letter queue by default', (done) => {
-      kewpie.subscribe(queueName, task => {
-        return Promise.reject();
-      }).then(({consumerTag}) => {
+      kewpie.subscribe(queueName, () =>
+        Promise.reject()
+      ).then(({ consumerTag }) => {
         tag = consumerTag;
       });
 
@@ -141,11 +145,11 @@ describe('kewpie', () => {
 
     it('should optionally requeue failed messages', (done) => {
       let times = 0;
-      kewpie.subscribe(queueName, task => {
+      kewpie.subscribe(queueName, () => {
         if (times === 1) return done();
         times++;
-        return Promise.reject({requeue: true});
-      }).then(({consumerTag}) => {
+        return Promise.reject({ requeue: true });
+      }).then(({ consumerTag }) => {
         tag = consumerTag;
       });
 

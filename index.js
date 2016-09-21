@@ -1,6 +1,15 @@
 const amqp = require('amqplib');
 const uuid = require('uuid');
 
+function delay(ms) {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
+
+const blankQueueError = new Error('Queue name is blank');
+const blankTaskError = new Error('Task body is blank');
+
 function kewpie(passedOpts = {}) {
   const defaultOpts = {
     deadLetterExchange: 'deadletters',
@@ -30,7 +39,8 @@ function kewpie(passedOpts = {}) {
     deadLetterExchange
   };
 
-  let channel, connection;
+  let channel;
+  let connection;
   let connectionAttempts = 0;
 
   function connect(rabbitUrl, queues) {
@@ -39,31 +49,33 @@ function kewpie(passedOpts = {}) {
       connection = conn;
 
       return conn.createConfirmChannel()
-      .then(ch => {
-        return setup(ch, queues)
-        .then(() => channel = ch);
-      })
+      .then(ch =>
+        setup(ch, queues)
+        .then(() => {
+          channel = ch;
+        })
+      );
     })
     .catch(reconnect(rabbitUrl, queues));
-  };
+  }
 
   function setup(ch, queues) {
-    return ch.assertExchange(exchange, 'topic', {durable: true})
-    .then(queues.map(queue => {
-      return ch.assertQueue(queue, queueOpts)
-      .then(ch.bindQueue(queue, exchange, queue));
-    }))
+    return ch.assertExchange(exchange, 'topic', { durable: true })
+    .then(queues.map(queue =>
+      ch.assertQueue(queue, queueOpts)
+      .then(ch.bindQueue(queue, exchange, queue))
+    ))
     .then(() => {
-      ch.assertExchange(deadLetterExchange, 'topic', {durable: true})
-      .then(() => {
-        return ch.assertQueue(deadLetterQueue, {durable: true});
-      }).then(() => {
-        return ch.bindQueue(deadLetterQueue, deadLetterExchange, '#');
-      }).catch(e => {
+      ch.assertExchange(deadLetterExchange, 'topic', { durable: true })
+      .then(() =>
+        ch.assertQueue(deadLetterQueue, { durable: true })
+      ).then(() =>
+        ch.bindQueue(deadLetterQueue, deadLetterExchange, '#')
+      ).catch(e => {
         throw e;
       });
     });
-  };
+  }
 
   function reconnect(rabbitUrl, queues) {
     return e => {
@@ -75,16 +87,18 @@ function kewpie(passedOpts = {}) {
         .then(() => connect(rabbitUrl, queues));
       }
     };
-  };
+  }
 
   function publish(queue, task, opts = {}) {
     if (!queue) return Promise.reject(blankQueueError);
     if (!task) return Promise.reject(blankTaskError);
 
-    if (!channel) return delay(delayMS)
-    .then(() => {
-      return publish(queue, task, opts);
-    });
+    if (!channel) {
+      return delay(delayMS)
+      .then(() =>
+        publish(queue, task, opts)
+      );
+    }
 
     const innerOpts = {
       priority: opts.priority || 0,
@@ -97,32 +111,33 @@ function kewpie(passedOpts = {}) {
     const buf = new Buffer(JSON.stringify(task));
 
     return new Promise((resolve, reject) => {
-      channel.publish(exchange, queue, buf, innerOpts, function(err) {
+      channel.publish(exchange, queue, buf, innerOpts, (err) => {
         if (err) return reject(err);
         return resolve(task);
       });
     });
-  };
+  }
 
   function unsubscribe(tag) {
     return channel.cancel(tag);
-  };
+  }
 
   function subscribe(queue, handler) {
-    if (!channel) return delay(delayMS)
-    .then(() => {
-      return subscribe(queue, handler);
-    });
+    if (!channel) {
+      return delay(delayMS)
+      .then(() =>
+        subscribe(queue, handler)
+      );
+    }
 
     const consumerTag = uuid.v4();
 
-    return new Promise((resolve, reject) => {
-
+    return new Promise(resolve => {
       channel.assertQueue(queue, queueOpts)
       .then(() => {
         channel.prefetch(process.env.MAX_CONCURRENT_JOBS || 1);
 
-        channel.consume(queue, function(msg) {
+        channel.consume(queue, (msg) => {
           try {
             handler(JSON.parse(msg.content.toString()))
             .then(() => {
@@ -136,16 +151,16 @@ function kewpie(passedOpts = {}) {
             // The only time this should be reached is when JSON.parse fails, so never requeue this kind of failure
             channel.nack(msg, false, false);
           }
-        }, {consumerTag});
+        }, { consumerTag });
 
-        return resolve({consumerTag});
+        return resolve({ consumerTag });
       });
     });
-  };
+  }
 
   function close() {
     return connection.close();
-  };
+  }
 
   return {
     publish,
@@ -159,15 +174,6 @@ function kewpie(passedOpts = {}) {
     },
     opts
   };
-};
+}
 
 module.exports = kewpie;
-
-function delay(ms) {
-  return new Promise(resolve => {
-    setTimeout(resolve, ms);
-  });
-};
-
-const blankQueueError = new Error('Queue name is blank');
-const blankTaskError = new Error('Task body is blank');
