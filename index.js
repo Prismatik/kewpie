@@ -37,11 +37,7 @@ function kewpie(passedOpts = {}) {
           .then(() => {
             return ch.assertQueue(deadLetterQueue, {durable: true});
           }).then(() => {
-            const bindProms = queues.map(queue => {
-              return ch.bindQueue(deadLetterQueue, deadLetterExchange, queue);
-            });
-
-            return Promise.all(bindProms);
+            return ch.bindQueue(deadLetterQueue, deadLetterExchange, '#');
           }).then(() => {
             channel = ch;
           }).catch(e => {
