@@ -29,6 +29,7 @@
   "homepage": "https://github.com/Prismatik/kewpie#readme",
   "devDependencies": {
     "bandname": "^1.0.0",
+    "co-mocha": "^1.1.3",
     "eslint": "^3.5.0",
     "eslint-config-prismatik": "^2.2.0",
     "jsdoc": "^3.4.1",

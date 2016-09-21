@@ -1,4 +1,5 @@
 require('must/register');
+require('co-mocha');
 const Kewpie = require('./index');
 const bandname = require('bandname');
 const amqp = require('amqplib');
@@ -13,15 +14,12 @@ describe('kewpie', () => {
     return kewpie.connect(process.env.RABBIT_URL, [queueName]);
   });
 
-  afterEach(() =>
-    amqp.connect(process.env.RABBIT_URL)
-    .then(conn =>
-      conn.createChannel().then(ch =>
-        ch.purgeQueue(queueName)
-        .then(() => ch.purgeQueue(kewpie.opts.deadLetterQueue))
-      )
-    )
-  );
+  afterEach(function *() {
+    const conn = yield amqp.connect(process.env.RABBIT_URL);
+    const ch = yield conn.createChannel();
+    yield ch.purgeQueue(queueName);
+    yield ch.purgeQueue(kewpie.opts.deadLetterQueue);
+  });
 
   describe('publish', () => {
     it('should queue a task', () =>
@@ -43,15 +41,11 @@ describe('kewpie', () => {
     let tag;
     let channel;
 
-    beforeEach(() => {
+    beforeEach(function *() {
       taskName = bandname();
 
-      return amqp.connect(process.env.RABBIT_URL)
-      .then(conn => {
-        conn.createConfirmChannel().then(ch => {
-          channel = ch;
-        });
-      });
+      const conn = yield amqp.connect(process.env.RABBIT_URL);
+      channel = yield conn.createConfirmChannel();
     });
 
     afterEach(() =>
@@ -170,6 +164,11 @@ describe('kewpie', () => {
       });
 
       kewpie.publish(queueName, { number: 1 })
+      .then(() =>
+        new Promise(resolve =>
+          setTimeout(resolve, 10)
+        )
+      )
       .then(() => kewpie.unsubscribe(tag))
       .then(() => kewpie.publish(queueName, { number: 2 }))
       .then(() => {

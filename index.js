@@ -59,17 +59,11 @@ function Kewpie(passedOpts = {}) {
    * @returns {Promise}
    */
   function connect(rabbitUrl, queues) {
-    return amqp.connect(rabbitUrl)
-    .then(conn => {
-      connection = conn;
-
-      return conn.createConfirmChannel()
-      .then(ch =>
-        setup(ch, queues)
-        .then(() => {
-          channel = ch;
-        })
-      );
+    return co(function *() {
+      connection = yield amqp.connect(rabbitUrl);
+      const ch = yield connection.createConfirmChannel();
+      yield setup(ch, queues);
+      channel = ch;
     })
     .catch(reconnect(rabbitUrl, queues));
   }
@@ -83,10 +77,10 @@ function Kewpie(passedOpts = {}) {
   function setup(ch, queues) {
     return co.wrap(function *() {
       yield ch.assertExchange(exchange, 'topic', { durable: true });
-      yield Promise.all(queues.map(queue =>
-        ch.assertQueue(queue, queueOpts)
-        .then(() => ch.bindQueue(queue, exchange, queue))
-      ));
+      yield Promise.all(queues.map(co.wrap(function *(queue) {
+        yield ch.assertQueue(queue, queueOpts);
+        yield ch.bindQueue(queue, exchange, queue);
+      })));
       yield ch.assertExchange(deadLetterExchange, 'topic', { durable: true });
       yield ch.assertQueue(deadLetterQueue, { durable: true });
       yield ch.bindQueue(deadLetterQueue, deadLetterExchange, '#');
@@ -105,8 +99,10 @@ function Kewpie(passedOpts = {}) {
       if (connectionAttempts > maxConnectionAttempts) {
         throw e;
       } else {
-        return delay(delayMS)
-        .then(() => connect(rabbitUrl, queues));
+        return co(function *() {
+          yield delay(delayMS);
+          return connect(rabbitUrl, queues);
+        });
       }
     };
   }
@@ -126,10 +122,10 @@ function Kewpie(passedOpts = {}) {
     if (!task) return Promise.reject(blankTaskError);
 
     if (!channel) {
-      return delay(delayMS)
-      .then(() =>
-        publish(queue, task, opts)
-      );
+      return co(function *() {
+        yield delay(delayMS);
+        return publish(queue, task, opts);
+      });
     }
 
     const innerOpts = {
@@ -168,23 +164,20 @@ function Kewpie(passedOpts = {}) {
    * @returns {Consumer}
    */
   function subscribe(queue, handler, maxConcurrent = 1) {
-    if (!channel) {
-      return delay(delayMS)
-      .then(() =>
-        subscribe(queue, handler)
-      );
-    }
+    return co(function *() {
+      if (!channel) {
+        yield delay(delayMS);
+        return subscribe(queue, handler, maxConcurrent);
+      }
 
-    const consumerTag = uuid.v4();
+      const consumerTag = uuid.v4();
 
-    return new Promise(resolve => {
-      channel.assertQueue(queue, queueOpts)
-      .then(() => {
-        channel.prefetch(maxConcurrent);
+      yield channel.assertQueue(queue, queueOpts);
+      yield channel.prefetch(maxConcurrent);
 
-        channel.consume(queue, (msg) => {
-          try {
-            handler(JSON.parse(msg.content.toString()))
+      channel.consume(queue, msg => {
+        try {
+          handler(JSON.parse(msg.content.toString()))
             .then(() => {
               channel.ack(msg);
             })
@@ -192,14 +185,13 @@ function Kewpie(passedOpts = {}) {
               opts.requeue = opts.requeue || false;
               channel.nack(msg, false, opts.requeue);
             });
-          } catch (e) {
-            // The only time this should be reached is when JSON.parse fails, so never requeue this kind of failure
-            channel.nack(msg, false, false);
-          }
-        }, { consumerTag });
+        } catch (e) {
+          // The only time this should be reached is when JSON.parse fails, so never requeue this kind of failure
+          channel.nack(msg, false, false);
+        }
+      }, { consumerTag });
 
-        return resolve({ consumerTag });
-      });
+      return { consumerTag };
     });
   }
 
