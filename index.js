@@ -5,15 +5,16 @@ function kewpie(passedOpts = {}) {
   const defaultOpts = {
     deadLetterExchange: 'deadletters',
     deadLetterQueue: 'deadletters',
-    exchange: 'kewpie'
+    exchange: 'kewpie',
+    maxPriority: 10
   };
 
   const opts = Object.assign({}, passedOpts, defaultOpts);
 
-  const { deadLetterExchange, deadLetterQueue, exchange } = opts;
+  const { maxPriority, deadLetterExchange, deadLetterQueue, exchange } = opts;
 
   const queueOpts = {
-    maxPriority: 10,
+    maxPriority,
     durable: true,
     deadLetterExchange
   };
