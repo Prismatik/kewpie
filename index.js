@@ -16,23 +16,27 @@ let channel, connection;
 let connectionAttempts = 0;
 const defaultExpiration = 1000 * 60 * 60; // 1 hour
 
-function connect(rabbitUrl, queues) {
+function connect(rabbitUrl, queues, opts = {}) {
   return amqp.connect(rabbitUrl).then(conn => {
+    deadLetterExchange = opts.deadLetterExchange || defaultDeadLetterExchange;
+    deadLetterQueue = opts.deadLetterQueue || defaultDeadLetterQueue;
+    exchange = opts.exchange || defaultExchange;
+
     connection = conn;
     conn.createConfirmChannel().then(ch => {
 
-      return ch.assertExchange(defaultExchange, 'topic', {durable: true})
+      return ch.assertExchange(exchange, 'topic', {durable: true})
       .then(queues.map(queue => {
         return ch.assertQueue(queue, queueOpts)
-        .then(ch.bindQueue(queue, defaultExchange, queue));
+        .then(ch.bindQueue(queue, exchange, queue));
       }))
       .then(() => {
-        ch.assertExchange(defaultDeadLetterExchange, 'direct', {durable: true})
+        ch.assertExchange(deadLetterExchange, 'direct', {durable: true})
         .then(() => {
-          return ch.assertQueue(defaultDeadLetterQueue, {durable: true});
+          return ch.assertQueue(deadLetterQueue, {durable: true});
         }).then(() => {
           const bindProms = queues.map(queue => {
-            return ch.bindQueue(defaultDeadLetterQueue, defaultDeadLetterExchange, queue);
+            return ch.bindQueue(deadLetterQueue, deadLetterExchange, queue);
           });
 
           return Promise.all(bindProms);
@@ -49,7 +53,7 @@ function connect(rabbitUrl, queues) {
       throw e;
     } else {
       return delay()
-      .then(() => connect(rabbitUrl, queues));
+      .then(() => connect(rabbitUrl, queues, opts));
     }
   });
 };
