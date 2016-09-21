@@ -167,7 +167,7 @@ function Kewpie(passedOpts = {}) {
    * @param {function} handler - The queue you wish to subscribe to
    * @returns {Consumer}
    */
-  function subscribe(queue, handler) {
+  function subscribe(queue, handler, maxConcurrent = 1) {
     if (!channel) {
       return delay(delayMS)
       .then(() =>
@@ -180,7 +180,7 @@ function Kewpie(passedOpts = {}) {
     return new Promise(resolve => {
       channel.assertQueue(queue, queueOpts)
       .then(() => {
-        channel.prefetch(process.env.MAX_CONCURRENT_JOBS || 1);
+        channel.prefetch(maxConcurrent);
 
         channel.consume(queue, (msg) => {
           try {
