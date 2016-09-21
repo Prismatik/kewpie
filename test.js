@@ -77,5 +77,42 @@ describe('kewpie', () => {
       });
       kewpie.publish(queueName, {name: taskName});
     });
+
+    it('should never pass a job with invalid JSON to the handler', (done) => {
+      kewpie.subscribe(queueName, task => {
+        done(new Error('job was passed to subscribe handler'));
+      });
+
+      amqp.connect(process.env.RABBIT_URL, [queueName])
+      .then(conn => {
+        conn.createConfirmChannel().then(ch => {
+          ch.sendToQueue(queueName, new Buffer('lol not json'), {}, err => {
+            if (err) return done(err);
+            setTimeout(done, 500);
+          });
+        });
+      });
+    });
+
+    it('should never requeue a job with invalid json', (done) => {
+      kewpie.subscribe(queueName, task => {
+        return Promise.reject();
+      });
+
+      amqp.connect(process.env.RABBIT_URL, [queueName])
+      .then(conn => {
+        conn.createConfirmChannel().then(ch => {
+          ch.consume(queueName, msg => {
+            done(new Error('job was passed to consume function'));
+          });
+
+          ch.sendToQueue(queueName, new Buffer('lol not json'), {}, err => {
+            if (err) return done(err);
+          });
+
+          setTimeout(done, 500);
+        });
+      });
+    });
   });
 });
