@@ -78,8 +78,8 @@ function kewpie(passedOpts = {}) {
   };
 
   function publish(queue, task, opts = {}) {
-    if (!queue) return Promise.reject('Queue name is blank');
-    if (!task) return Promise.reject('Task body is blank');
+    if (!queue) return Promise.reject(blankQueueError);
+    if (!task) return Promise.reject(blankTaskError);
 
     if (!channel) return delay(delayMS)
     .then(() => {
@@ -151,7 +151,9 @@ function kewpie(passedOpts = {}) {
     subscribe,
     unsubscribe,
     connect,
-    close
+    close,
+    blankQueueError,
+    blankTaskError
   };
 };
 
@@ -162,3 +164,6 @@ function delay(ms) {
     setTimeout(resolve, ms);
   });
 };
+
+const blankQueueError = new Error('Queue name is blank');
+const blankTaskError = new Error('Task body is blank');

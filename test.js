@@ -30,11 +30,11 @@ describe('kewpie', () => {
     });
 
     it('should complain about a falsy task', () => {
-      return kewpie.publish(queueName, '').must.reject.to.equal('Task body is blank');
+      return kewpie.publish(queueName, '').must.reject.to.equal(kewpie.blankTaskError);
     });
 
     it('should complain about a falsy queue name', () => {
-      return kewpie.publish('', 'hi').must.reject.to.equal('Queue name is blank');
+      return kewpie.publish('', 'hi').must.reject.to.equal(kewpie.blankQueueError);
     });
   });
   describe('subscribe', () => {
