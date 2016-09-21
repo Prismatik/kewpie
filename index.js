@@ -8,12 +8,13 @@ function kewpie(passedOpts = {}) {
     exchange: 'kewpie',
     maxPriority: 10,
     defaultExpiration: 1000 * 60 * 60, // 1 hour
-    maxConnectionAttempts: 10
+    maxConnectionAttempts: 10,
+    delayMS: 500
   };
 
   const opts = Object.assign({}, passedOpts, defaultOpts);
 
-  const { maxConnectionAttempts, defaultExpiration, maxPriority, deadLetterExchange, deadLetterQueue, exchange } = opts;
+  const { delayMS, maxConnectionAttempts, defaultExpiration, maxPriority, deadLetterExchange, deadLetterQueue, exchange } = opts;
 
   const queueOpts = {
     maxPriority,
@@ -127,6 +128,12 @@ function kewpie(passedOpts = {}) {
     return connection.close();
   };
 
+  function delay() {
+    return new Promise(resolve => {
+      setTimeout(resolve, delayMS);
+    });
+  };
+
   return {
     publish,
     subscribe,
@@ -137,9 +144,3 @@ function kewpie(passedOpts = {}) {
 };
 
 module.exports = kewpie;
-
-function delay() {
-  return new Promise(resolve => {
-    setTimeout(resolve, 500);
-  });
-};
