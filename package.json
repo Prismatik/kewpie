@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
-    "test": "mocha && npm run lint",
-    "dockertest": "docker-compose run kewpie npm test",
+    "test": "mocha",
+    "testlint": "mocha && npm run lint",
+    "dockertest": "docker-compose run kewpie npm run testlint",
     "dockerwatch": "docker-compose run kewpie npm test -- --watch",
     "jsdoc": "jsdoc -d docs/api_jsdoc index.js typedefs.jsdoc"
   },
