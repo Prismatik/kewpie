@@ -49,7 +49,7 @@ function connect(rabbitUrl, queues) {
       throw e;
     } else {
       return delay()
-      .then(() => connect(rabbitUrl));
+      .then(() => connect(rabbitUrl, queues));
     }
   });
 };
