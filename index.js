@@ -153,8 +153,11 @@ function kewpie(passedOpts = {}) {
     unsubscribe,
     connect,
     close,
-    blankQueueError,
-    blankTaskError
+    errors: {
+      blankQueueError,
+      blankTaskError
+    },
+    opts
   };
 };
 

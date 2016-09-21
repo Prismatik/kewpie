@@ -18,7 +18,7 @@ describe('kewpie', () => {
     .then(conn => {
       return conn.createChannel().then(ch => {
         return ch.purgeQueue(queueName)
-        .then(() => ch.purgeQueue('deadletters'));
+        .then(() => ch.purgeQueue(kewpie.opts.deadLetterQueue));
       });
     });
   });
@@ -31,11 +31,11 @@ describe('kewpie', () => {
     });
 
     it('should complain about a falsy task', () => {
-      return kewpie.publish(queueName, '').must.reject.to.equal(kewpie.blankTaskError);
+      return kewpie.publish(queueName, '').must.reject.to.equal(kewpie.errors.blankTaskError);
     });
 
     it('should complain about a falsy queue name', () => {
-      return kewpie.publish('', 'hi').must.reject.to.equal(kewpie.blankQueueError);
+      return kewpie.publish('', 'hi').must.reject.to.equal(kewpie.errors.blankQueueError);
     });
   });
   describe('subscribe', () => {
@@ -129,7 +129,7 @@ describe('kewpie', () => {
       });
 
       setTimeout(() => {
-        channel.checkQueue('deadletters').then(queue => {
+        channel.checkQueue(kewpie.opts.deadLetterQueue).then(queue => {
           queue.messageCount.must.equal(1);
           done();
         })
