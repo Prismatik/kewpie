@@ -7,7 +7,8 @@
     "lint": "eslint .",
     "test": "mocha && npm run lint",
     "dockertest": "docker-compose run kewpie npm test",
-    "dockerwatch": "docker-compose run kewpie npm test -- --watch"
+    "dockerwatch": "docker-compose run kewpie npm test -- --watch",
+    "jsdoc": "jsdoc -d docs/api_jsdoc index.js"
   },
   "repository": {
     "type": "git",
@@ -29,6 +30,7 @@
     "bandname": "^1.0.0",
     "eslint": "^3.5.0",
     "eslint-config-prismatik": "^2.2.0",
+    "jsdoc": "^3.4.1",
     "mocha": "^3.0.2",
     "must": "^0.13.2"
   },
