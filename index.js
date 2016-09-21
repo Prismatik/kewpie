@@ -10,7 +10,7 @@ function delay(ms) {
 const blankQueueError = new Error('Queue name is blank');
 const blankTaskError = new Error('Task body is blank');
 
-function kewpie(passedOpts = {}) {
+function Kewpie(passedOpts = {}) {
   const defaultOpts = {
     deadLetterExchange: 'deadletters',
     deadLetterQueue: 'deadletters',
@@ -176,4 +176,4 @@ function kewpie(passedOpts = {}) {
   };
 }
 
-module.exports = kewpie;
+module.exports = Kewpie;
