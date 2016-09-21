@@ -156,4 +156,28 @@ describe('kewpie', () => {
       kewpie.publish(queueName, { oh: 'hai' });
     });
   });
+
+  describe('unsubscribe', () => {
+    it('should unsubscribe the handler', (done) => {
+      let times = 0;
+      let tag;
+      kewpie.subscribe(queueName, () => {
+        times++;
+        return Promise.resolve();
+      })
+      .then(({ consumerTag }) => {
+        tag = consumerTag;
+      });
+
+      kewpie.publish(queueName, { number: 1 })
+      .then(() => kewpie.unsubscribe(tag))
+      .then(() => kewpie.publish(queueName, { number: 2 }))
+      .then(() => {
+        setTimeout(() => {
+          times.must.equal(1);
+          done();
+        }, 500);
+      });
+    });
+  });
 });
