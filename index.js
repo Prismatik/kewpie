@@ -7,12 +7,13 @@ function kewpie(passedOpts = {}) {
     deadLetterQueue: 'deadletters',
     exchange: 'kewpie',
     maxPriority: 10,
-    defaultExpiration: 1000 * 60 * 60 // 1 hour
+    defaultExpiration: 1000 * 60 * 60, // 1 hour
+    maxConnectionAttempts: 10
   };
 
   const opts = Object.assign({}, passedOpts, defaultOpts);
 
-  const { defaultExpiration, maxPriority, deadLetterExchange, deadLetterQueue, exchange } = opts;
+  const { maxConnectionAttempts, defaultExpiration, maxPriority, deadLetterExchange, deadLetterQueue, exchange } = opts;
 
   const queueOpts = {
     maxPriority,
@@ -48,7 +49,7 @@ function kewpie(passedOpts = {}) {
       });
     }).catch(e => {
       connectionAttempts++;
-      if (connectionAttempts > 10) {
+      if (connectionAttempts > maxConnectionAttempts) {
         throw e;
       } else {
         return delay()
