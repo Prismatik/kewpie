@@ -33,7 +33,7 @@ function kewpie(passedOpts = {}) {
           .then(ch.bindQueue(queue, exchange, queue));
         }))
         .then(() => {
-          ch.assertExchange(deadLetterExchange, 'direct', {durable: true})
+          ch.assertExchange(deadLetterExchange, 'topic', {durable: true})
           .then(() => {
             return ch.assertQueue(deadLetterQueue, {durable: true});
           }).then(() => {
