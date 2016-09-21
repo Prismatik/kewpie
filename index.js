@@ -1,5 +1,6 @@
 const amqp = require('amqplib');
 const uuid = require('uuid');
+const co = require('co');
 
 function delay(ms) {
   return new Promise(resolve => {
@@ -80,21 +81,16 @@ function Kewpie(passedOpts = {}) {
    * @returns {Promise}
    */
   function setup(ch, queues) {
-    return ch.assertExchange(exchange, 'topic', { durable: true })
-    .then(queues.map(queue =>
-      ch.assertQueue(queue, queueOpts)
-      .then(ch.bindQueue(queue, exchange, queue))
-    ))
-    .then(() => {
-      ch.assertExchange(deadLetterExchange, 'topic', { durable: true })
-      .then(() =>
-        ch.assertQueue(deadLetterQueue, { durable: true })
-      ).then(() =>
-        ch.bindQueue(deadLetterQueue, deadLetterExchange, '#')
-      ).catch(e => {
-        throw e;
-      });
-    });
+    return co.wrap(function *() {
+      yield ch.assertExchange(exchange, 'topic', { durable: true });
+      yield Promise.all(queues.map(queue =>
+        ch.assertQueue(queue, queueOpts)
+        .then(() => ch.bindQueue(queue, exchange, queue))
+      ));
+      yield ch.assertExchange(deadLetterExchange, 'topic', { durable: true });
+      yield ch.assertQueue(deadLetterQueue, { durable: true });
+      yield ch.bindQueue(deadLetterQueue, deadLetterExchange, '#');
+    })();
   }
 
   /**
