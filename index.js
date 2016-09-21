@@ -14,7 +14,15 @@ function kewpie(passedOpts = {}) {
 
   const opts = Object.assign({}, passedOpts, defaultOpts);
 
-  const { delayMS, maxConnectionAttempts, defaultExpiration, maxPriority, deadLetterExchange, deadLetterQueue, exchange } = opts;
+  const {
+    delayMS,
+    maxConnectionAttempts,
+    defaultExpiration,
+    maxPriority,
+    deadLetterExchange,
+    deadLetterQueue,
+    exchange
+  } = opts;
 
   const queueOpts = {
     maxPriority,
