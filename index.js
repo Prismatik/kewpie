@@ -3,6 +3,7 @@ const uuid = require('uuid');
 
 const defaultDeadLetterExchange = 'deadletters';
 const defaultDeadLetterQueue = 'deadletters';
+const defaultExchange = 'kewpie';
 
 
 const queueOpts = {
@@ -20,11 +21,11 @@ function connect(rabbitUrl, queues) {
     connection = conn;
     conn.createConfirmChannel().then(ch => {
 
-      const queueProms = queues.map(queue => {
-        return ch.assertQueue(queue, queueOpts);
-      });
-
-      return Promise.all(queueProms)
+      return ch.assertExchange(defaultExchange, 'direct', {durable: true})
+      .then(queues.map(queue => {
+        return ch.assertQueue(queue, queueOpts)
+        .then(ch.bindQueue(queue, defaultExchange, queue));
+      }))
       .then(() => {
         ch.assertExchange(defaultDeadLetterExchange, 'direct', {durable: true})
         .then(() => {
@@ -73,7 +74,7 @@ function publish(queue, task, opts = {}) {
   const buf = new Buffer(JSON.stringify(task));
 
   return new Promise((resolve, reject) => {
-    channel.sendToQueue(queue, buf, innerOpts, function(err) {
+    channel.publish(defaultExchange, queue, buf, innerOpts, function(err) {
       if (err) return reject(err);
       return resolve(task);
     });
