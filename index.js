@@ -1,3 +1,7 @@
+/**
+ * Provides an easy wrapper and good defaults over RabbitMQ
+ * @module Kewpie
+ */
 const amqp = require('amqplib');
 const uuid = require('uuid');
 
@@ -10,6 +14,18 @@ function delay(ms) {
 const blankQueueError = new Error('Queue name is blank');
 const blankTaskError = new Error('Task body is blank');
 
+/**
+ * Return an instance of Kewpie
+ * @constructor
+ * @param {Object} [passedOpts] - A set of options to override the defaults
+ * @param {string} passedOpts.deadLetterExchange - The name of the exchange to expired and nacked messages to
+ * @param {string} passedOpts.deadLetterQueue - The name of the queue that dead lettered messages will come to reside in after being routed from the dead letter exchange
+ * @param {string} passedOpts.kewpie - The name of the main exchange all messages are `publish`ed to
+ * @param {number} passedOpts.maxPriority - The maximum priority level that messages on queues may have
+ * @param {number} passedOpts.defaultExpiration - The default expiration time for messages. This prevents unfulfillable tasks from clogging up the queue forever (in MS)
+ * @param {number} passedOpts.maxConnectionAttempts - The maximum amount of times kewpie will attempt to connect to the RabbitMQ server before giving up and throwing
+ * @param {number} passedOpts.delayMS - The delay in MS to wait between retrying operations before kewpie has successfully connected to the RabbitMQ server on initialisation
+ */
 function Kewpie(passedOpts = {}) {
   const defaultOpts = {
     deadLetterExchange: 'deadletters',
@@ -43,6 +59,12 @@ function Kewpie(passedOpts = {}) {
   let connection;
   let connectionAttempts = 0;
 
+  /**
+   * Connect to the RabbitMQ server and set up the queues and exchanges
+   * @module Kewpie/connect
+   * @param {string} rabbitUrl - The URL to connect to a rabbitMQ server, eg: amqp://localhost:15672
+   * @param {string[]} queues - The queues to instantiate for later publishing or subscription
+   */
   function connect(rabbitUrl, queues) {
     return amqp.connect(rabbitUrl)
     .then(conn => {
@@ -59,6 +81,11 @@ function Kewpie(passedOpts = {}) {
     .catch(reconnect(rabbitUrl, queues));
   }
 
+  /**
+   * Set up the queues and exchanges
+   * @param {Object} ch - A channel returned from amqplib
+   * @param {string[]} queues - The queues to instantiate for later publishing or subscription
+   */
   function setup(ch, queues) {
     return ch.assertExchange(exchange, 'topic', { durable: true })
     .then(queues.map(queue =>
@@ -77,6 +104,11 @@ function Kewpie(passedOpts = {}) {
     });
   }
 
+  /**
+   * If the connection to RabbitMQ fails, wait a little bit then try again
+   * @param {string} rabbitUrl - The URL to connect to a rabbitMQ server, eg: amqp://localhost:15672
+   * @param {string[]} queues - The queues to instantiate for later publishing or subscription
+   */
   function reconnect(rabbitUrl, queues) {
     return e => {
       connectionAttempts++;
@@ -89,6 +121,15 @@ function Kewpie(passedOpts = {}) {
     };
   }
 
+  /**
+   * Publish a message/task to a queue
+   * @module Kewpie/publish
+   * @param {string} queue - The name of the queue you intend the message to reach. This will be used as the message's routing key
+   * @param {Object} task - Any `JSON.stringify`able Object. This will be serialised and sent as the message body
+   * @param {Object} [opts] - A set of opts to override defaults
+   * @param {number} opts.priority - The priority of the message (defaults to 0)
+   * @param {number} opts.expiration - The expiration time of the message in MS
+   */
   function publish(queue, task, opts = {}) {
     if (!queue) return Promise.reject(blankQueueError);
     if (!task) return Promise.reject(blankTaskError);
@@ -118,10 +159,21 @@ function Kewpie(passedOpts = {}) {
     });
   }
 
+  /**
+   * Unsubscribe a subscriber/handler from a queue
+   * @module Kewpie/unsubscribe
+   * @param {string} tag - The consumerTag of the subscriber
+   */
   function unsubscribe(tag) {
     return channel.cancel(tag);
   }
 
+  /**
+   * Subscribe a handler to a queue
+   * @module Kewpie/subscribe
+   * @param {string} queue - The queue you wish to subscribe to
+   * @param {function} handler - The queue you wish to subscribe to
+   */
   function subscribe(queue, handler) {
     if (!channel) {
       return delay(delayMS)
@@ -158,6 +210,10 @@ function Kewpie(passedOpts = {}) {
     });
   }
 
+  /**
+   * Close the connection to RabbitMQ
+   * @module Kewpie/close
+   */
   function close() {
     return connection.close();
   }
