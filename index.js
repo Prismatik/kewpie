@@ -34,44 +34,54 @@ function kewpie(passedOpts = {}) {
   let connectionAttempts = 0;
 
   function connect(rabbitUrl, queues) {
-    return amqp.connect(rabbitUrl).then(conn => {
+    return amqp.connect(rabbitUrl)
+    .then(conn => {
       connection = conn;
+
       return conn.createConfirmChannel()
       .then(ch => {
-        return ch.assertExchange(exchange, 'topic', {durable: true})
-        .then(queues.map(queue => {
-          return ch.assertQueue(queue, queueOpts)
-          .then(ch.bindQueue(queue, exchange, queue));
-        }))
-        .then(() => {
-          ch.assertExchange(deadLetterExchange, 'topic', {durable: true})
-          .then(() => {
-            return ch.assertQueue(deadLetterQueue, {durable: true});
-          }).then(() => {
-            return ch.bindQueue(deadLetterQueue, deadLetterExchange, '#');
-          }).then(() => {
-            channel = ch;
-          }).catch(e => {
-            throw e;
-          });
-        });
+        return setup(ch, queues)
+        .then(() => channel = ch);
+      })
+    })
+    .catch(reconnect(rabbitUrl, queues));
+  };
+
+  function setup(ch, queues) {
+    return ch.assertExchange(exchange, 'topic', {durable: true})
+    .then(queues.map(queue => {
+      return ch.assertQueue(queue, queueOpts)
+      .then(ch.bindQueue(queue, exchange, queue));
+    }))
+    .then(() => {
+      ch.assertExchange(deadLetterExchange, 'topic', {durable: true})
+      .then(() => {
+        return ch.assertQueue(deadLetterQueue, {durable: true});
+      }).then(() => {
+        return ch.bindQueue(deadLetterQueue, deadLetterExchange, '#');
+      }).catch(e => {
+        throw e;
       });
-    }).catch(e => {
+    });
+  };
+
+  function reconnect(rabbitUrl, queues) {
+    return e => {
       connectionAttempts++;
       if (connectionAttempts > maxConnectionAttempts) {
         throw e;
       } else {
-        return delay()
-        .then(() => connect(rabbitUrl, queues, opts));
+        return delay(delayMS)
+        .then(() => connect(rabbitUrl, queues));
       }
-    });
+    };
   };
 
   function publish(queue, task, opts = {}) {
     if (!queue) return Promise.reject('Queue name is blank');
     if (!task) return Promise.reject('Task body is blank');
 
-    if (!channel) return delay()
+    if (!channel) return delay(delayMS)
     .then(() => {
       return publish(queue, task, opts);
     });
@@ -99,7 +109,7 @@ function kewpie(passedOpts = {}) {
   };
 
   function subscribe(queue, handler) {
-    if (!channel) return delay()
+    if (!channel) return delay(delayMS)
     .then(() => {
       return subscribe(queue, handler);
     });
@@ -136,12 +146,6 @@ function kewpie(passedOpts = {}) {
     return connection.close();
   };
 
-  function delay() {
-    return new Promise(resolve => {
-      setTimeout(resolve, delayMS);
-    });
-  };
-
   return {
     publish,
     subscribe,
@@ -152,3 +156,9 @@ function kewpie(passedOpts = {}) {
 };
 
 module.exports = kewpie;
+
+function delay(ms) {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+};
