@@ -1,7 +1,9 @@
 require('must/register');
-const kewpie = require('./index');
+const Kewpie = require('./index');
 const bandname = require('bandname');
 const amqp = require('amqplib');
+
+const kewpie = new Kewpie();
 
 describe('kewpie', () => {
   const queueName = bandname();
