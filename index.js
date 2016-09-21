@@ -6,12 +6,13 @@ function kewpie(passedOpts = {}) {
     deadLetterExchange: 'deadletters',
     deadLetterQueue: 'deadletters',
     exchange: 'kewpie',
-    maxPriority: 10
+    maxPriority: 10,
+    defaultExpiration: 1000 * 60 * 60 // 1 hour
   };
 
   const opts = Object.assign({}, passedOpts, defaultOpts);
 
-  const { maxPriority, deadLetterExchange, deadLetterQueue, exchange } = opts;
+  const { defaultExpiration, maxPriority, deadLetterExchange, deadLetterQueue, exchange } = opts;
 
   const queueOpts = {
     maxPriority,
@@ -21,7 +22,6 @@ function kewpie(passedOpts = {}) {
 
   let channel, connection;
   let connectionAttempts = 0;
-  const defaultExpiration = 1000 * 60 * 60; // 1 hour
 
   function connect(rabbitUrl, queues) {
     return amqp.connect(rabbitUrl).then(conn => {
