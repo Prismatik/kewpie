@@ -27,6 +27,10 @@ describe('kewpie', () => {
     tag, directTag = undefined;
   });
 
+  after(function *() {
+    yield kewpie.close();
+  });
+
   describe('publish', () => {
     it('should queue a task', () =>
       kewpie.publish(queueName, {
