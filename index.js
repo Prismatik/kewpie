@@ -119,35 +119,35 @@ function Kewpie(passedOpts = {}) {
    * @returns {Promise}
    */
   function publish(queue, task, opts = {}) {
-    if (!queue) return Promise.reject(blankQueueError);
-    if (!task) return Promise.reject(blankTaskError);
+    return co(function *() {
+      if (!queue) throw blankQueueError;
+      if (!task) throw blankTaskError;
 
-    if (!channel) {
-      return co(function *() {
+      if (!channel) {
         yield delay(delayMS);
         return publish(queue, task, opts);
-      });
-    }
+      }
 
-    const innerOpts = {
-      priority: opts.priority || 0,
-      persistent: true,
-      expiration: opts.expiration || defaultExpiration
-    };
+      const innerOpts = {
+        priority: opts.priority || 0,
+        persistent: true,
+        expiration: opts.expiration || defaultExpiration
+      };
 
-    if (opts.expiration === null) delete innerOpts.expiration;
+      if (opts.expiration === null) delete innerOpts.expiration;
 
-    let buf;
-    try {
-      buf = new Buffer(JSON.stringify(task));
-    } catch (e) {
-      return Promise.reject(invalidJsonError);
-    }
+      let buf;
+      try {
+        buf = new Buffer(JSON.stringify(task));
+      } catch (e) {
+        return Promise.reject(invalidJsonError);
+      }
 
-    return new Promise((resolve, reject) => {
-      channel.publish(exchange, queue, buf, innerOpts, (err) => {
-        if (err) return reject(err);
-        return resolve(task);
+      return new Promise((resolve, reject) => {
+        const err = channel.publish(exchange, queue, buf, innerOpts, (err) => {
+          if (err) return reject(err);
+          return resolve(task);
+        });
       });
     });
   }
