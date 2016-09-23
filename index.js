@@ -10,6 +10,7 @@ function delay(ms) {
 
 const blankQueueError = new Error('Queue name is blank');
 const blankTaskError = new Error('Task body is blank');
+const invalidJsonError = new Error('Invalid JSON in task body');
 
 /**
  * Return an instance of Kewpie
@@ -136,7 +137,12 @@ function Kewpie(passedOpts = {}) {
 
     if (opts.expiration === null) delete innerOpts.expiration;
 
-    const buf = new Buffer(JSON.stringify(task));
+    let buf;
+    try {
+      buf = new Buffer(JSON.stringify(task));
+    } catch (e) {
+      return Promise.reject(invalidJsonError);
+    }
 
     return new Promise((resolve, reject) => {
       channel.publish(exchange, queue, buf, innerOpts, (err) => {
@@ -212,7 +218,8 @@ function Kewpie(passedOpts = {}) {
     close,
     errors: {
       blankQueueError,
-      blankTaskError
+      blankTaskError,
+      invalidJsonError
     },
     opts
   };

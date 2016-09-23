@@ -35,6 +35,25 @@ describe('kewpie', () => {
     it('should complain about a falsy queue name', () =>
       kewpie.publish('', 'hi').must.reject.to.equal(kewpie.errors.blankQueueError)
     );
+
+    it('should gracefully handle invalid json', function *() {
+      let thrown = false;
+
+      const object = {};
+      object.arr = [
+        object, object
+      ];
+      object.arr.push(object.arr);
+      object.obj = object;
+
+      try {
+        yield kewpie.publish(queueName, object);
+      } catch (e) {
+        e.must.equal(kewpie.errors.invalidJsonError);
+        thrown = true;
+      }
+      thrown.must.be(true)
+    });
   });
   describe('subscribe', () => {
     let taskName;
