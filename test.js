@@ -1,4 +1,4 @@
-require('must/register');
+const demand = require('must/register');
 require('co-mocha');
 const Kewpie = require('./index');
 const bandname = require('bandname');
@@ -8,6 +8,9 @@ const kewpie = new Kewpie();
 
 describe('kewpie', () => {
   const queueName = bandname();
+  let tag;
+  let directTag;
+  let channel;
 
   before(function () {
     this.timeout(5000);
@@ -19,6 +22,9 @@ describe('kewpie', () => {
     const ch = yield conn.createChannel();
     yield ch.purgeQueue(queueName);
     yield ch.purgeQueue(kewpie.opts.deadLetterQueue);
+    if (tag) yield kewpie.unsubscribe(tag);
+    if (directTag) yield channel.cancel(directTag);
+    tag, directTag = undefined;
   });
 
   describe('publish', () => {
@@ -35,6 +41,21 @@ describe('kewpie', () => {
     it('should complain about a falsy queue name', () =>
       kewpie.publish('', 'hi').must.reject.to.equal(kewpie.errors.blankQueueError)
     );
+
+    it('should publish a message with no expiration', function *() {
+      yield kewpie.publish(queueName, {
+        oh: 'hai'
+      }, {
+        expiration: null
+      })
+
+      const conn = yield amqp.connect(process.env.RABBIT_URL);
+      channel = yield conn.createConfirmChannel();
+      const { consumerTag } = yield channel.consume(queueName, function (msg) {
+        demand(msg.properties.expiration).be(undefined);
+      });
+      directTag = consumerTag;
+    });
 
     it('should gracefully handle invalid json', function *() {
       let thrown = false;
@@ -57,8 +78,6 @@ describe('kewpie', () => {
   });
   describe('subscribe', () => {
     let taskName;
-    let tag;
-    let channel;
 
     beforeEach(function *() {
       taskName = bandname();
@@ -66,10 +85,6 @@ describe('kewpie', () => {
       const conn = yield amqp.connect(process.env.RABBIT_URL);
       channel = yield conn.createConfirmChannel();
     });
-
-    afterEach(() =>
-      kewpie.unsubscribe(tag)
-    );
 
     it('should be handed a job', (done) => {
       kewpie.subscribe(queueName, task => {
