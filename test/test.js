@@ -1,6 +1,6 @@
 require('must/register');
 require('co-mocha');
-const Kewpie = require('./index');
+const Kewpie = require('../src/index');
 const bandname = require('bandname');
 const amqp = require('amqplib');
 
@@ -19,6 +19,10 @@ describe('kewpie', () => {
     const ch = yield conn.createChannel();
     yield ch.purgeQueue(queueName);
     yield ch.purgeQueue(kewpie.opts.deadLetterQueue);
+  });
+
+  after(function *() {
+    yield kewpie.close();
   });
 
   describe('publish', () => {
