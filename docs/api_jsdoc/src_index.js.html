@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: index.js</title>
+    <title>JSDoc: Source: src/index.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: index.js</h1>
+    <h1 class="page-title">Source: src/index.js</h1>
 
     
 
@@ -28,6 +28,7 @@
         <article>
             <pre class="prettyprint source linenums"><code>const amqp = require('amqplib');
 const uuid = require('uuid');
+const co = require('co');
 
 function delay(ms) {
   return new Promise(resolve => {
@@ -37,6 +38,7 @@ function delay(ms) {
 
 const blankQueueError = new Error('Queue name is blank');
 const blankTaskError = new Error('Task body is blank');
+const invalidJsonError = new Error('Invalid JSON in task body');
 
 /**
  * Return an instance of Kewpie
@@ -86,17 +88,11 @@ function Kewpie(passedOpts = {}) {
    * @returns {Promise}
    */
   function connect(rabbitUrl, queues) {
-    return amqp.connect(rabbitUrl)
-    .then(conn => {
-      connection = conn;
-
-      return conn.createConfirmChannel()
-      .then(ch =>
-        setup(ch, queues)
-        .then(() => {
-          channel = ch;
-        })
-      );
+    return co(function *() {
+      connection = yield amqp.connect(rabbitUrl);
+      const ch = yield connection.createConfirmChannel();
+      yield setup(ch, queues);
+      channel = ch;
     })
     .catch(reconnect(rabbitUrl, queues));
   }
@@ -108,21 +104,16 @@ function Kewpie(passedOpts = {}) {
    * @returns {Promise}
    */
   function setup(ch, queues) {
-    return ch.assertExchange(exchange, 'topic', { durable: true })
-    .then(queues.map(queue =>
-      ch.assertQueue(queue, queueOpts)
-      .then(ch.bindQueue(queue, exchange, queue))
-    ))
-    .then(() => {
-      ch.assertExchange(deadLetterExchange, 'topic', { durable: true })
-      .then(() =>
-        ch.assertQueue(deadLetterQueue, { durable: true })
-      ).then(() =>
-        ch.bindQueue(deadLetterQueue, deadLetterExchange, '#')
-      ).catch(e => {
-        throw e;
-      });
-    });
+    return co.wrap(function *() {
+      yield ch.assertExchange(exchange, 'topic', { durable: true });
+      yield Promise.all(queues.map(co.wrap(function *(queue) {
+        yield ch.assertQueue(queue, queueOpts);
+        yield ch.bindQueue(queue, exchange, queue);
+      })));
+      yield ch.assertExchange(deadLetterExchange, 'topic', { durable: true });
+      yield ch.assertQueue(deadLetterQueue, { durable: true });
+      yield ch.bindQueue(deadLetterQueue, deadLetterExchange, '#');
+    })();
   }
 
   /**
@@ -137,8 +128,10 @@ function Kewpie(passedOpts = {}) {
       if (connectionAttempts > maxConnectionAttempts) {
         throw e;
       } else {
-        return delay(delayMS)
-        .then(() => connect(rabbitUrl, queues));
+        return co(function *() {
+          yield delay(delayMS);
+          return connect(rabbitUrl, queues);
+        });
       }
     };
   }
@@ -154,30 +147,35 @@ function Kewpie(passedOpts = {}) {
    * @returns {Promise}
    */
   function publish(queue, task, opts = {}) {
-    if (!queue) return Promise.reject(blankQueueError);
-    if (!task) return Promise.reject(blankTaskError);
+    return co(function *() {
+      if (!queue) throw blankQueueError;
+      if (!task) throw blankTaskError;
 
-    if (!channel) {
-      return delay(delayMS)
-      .then(() =>
-        publish(queue, task, opts)
-      );
-    }
+      if (!channel) {
+        yield delay(delayMS);
+        return publish(queue, task, opts);
+      }
 
-    const innerOpts = {
-      priority: opts.priority || 0,
-      persistent: true,
-      expiration: opts.expiration || defaultExpiration
-    };
+      const innerOpts = {
+        priority: opts.priority || 0,
+        persistent: true,
+        expiration: opts.expiration || defaultExpiration
+      };
 
-    if (opts.expiration === null) delete innerOpts.expiration;
+      if (opts.expiration === null) delete innerOpts.expiration;
 
-    const buf = new Buffer(JSON.stringify(task));
+      let buf;
+      try {
+        buf = new Buffer(JSON.stringify(task));
+      } catch (e) {
+        return Promise.reject(invalidJsonError);
+      }
 
-    return new Promise((resolve, reject) => {
-      channel.publish(exchange, queue, buf, innerOpts, (err) => {
-        if (err) return reject(err);
-        return resolve(task);
+      return new Promise((resolve, reject) => {
+        const err = channel.publish(exchange, queue, buf, innerOpts, (err) => {
+          if (err) return reject(err);
+          return resolve(task);
+        });
       });
     });
   }
@@ -199,24 +197,21 @@ function Kewpie(passedOpts = {}) {
    * @param {function} handler - The queue you wish to subscribe to
    * @returns {Consumer}
    */
-  function subscribe(queue, handler) {
-    if (!channel) {
-      return delay(delayMS)
-      .then(() =>
-        subscribe(queue, handler)
-      );
-    }
+  function subscribe(queue, handler, maxConcurrent = 1) {
+    return co(function *() {
+      if (!channel) {
+        yield delay(delayMS);
+        return subscribe(queue, handler, maxConcurrent);
+      }
 
-    const consumerTag = uuid.v4();
+      const consumerTag = uuid.v4();
 
-    return new Promise(resolve => {
-      channel.assertQueue(queue, queueOpts)
-      .then(() => {
-        channel.prefetch(process.env.MAX_CONCURRENT_JOBS || 1);
+      yield channel.assertQueue(queue, queueOpts);
+      yield channel.prefetch(maxConcurrent);
 
-        channel.consume(queue, (msg) => {
-          try {
-            handler(JSON.parse(msg.content.toString()))
+      channel.consume(queue, msg => {
+        try {
+          handler(JSON.parse(msg.content.toString()))
             .then(() => {
               channel.ack(msg);
             })
@@ -224,14 +219,13 @@ function Kewpie(passedOpts = {}) {
               opts.requeue = opts.requeue || false;
               channel.nack(msg, false, opts.requeue);
             });
-          } catch (e) {
-            // The only time this should be reached is when JSON.parse fails, so never requeue this kind of failure
-            channel.nack(msg, false, false);
-          }
-        }, { consumerTag });
+        } catch (e) {
+          // The only time this should be reached is when JSON.parse fails, so never requeue this kind of failure
+          channel.nack(msg, false, false);
+        }
+      }, { consumerTag });
 
-        return resolve({ consumerTag });
-      });
+      return { consumerTag };
     });
   }
 
@@ -252,7 +246,8 @@ function Kewpie(passedOpts = {}) {
     close,
     errors: {
       blankQueueError,
-      blankTaskError
+      blankTaskError,
+      invalidJsonError
     },
     opts
   };
@@ -275,7 +270,7 @@ module.exports = Kewpie;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.1</a> on Wed Sep 21 2016 21:06:03 GMT+1000 (AEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.2</a> on Tue Oct 04 2016 14:48:29 GMT+1100 (AEDT)
 </footer>
 
 <script> prettyPrint(); </script>
