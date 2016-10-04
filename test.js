@@ -1,4 +1,4 @@
-const demand = require('must/register');
+require('must/register');
 require('co-mocha');
 const Kewpie = require('./index');
 const bandname = require('bandname');
@@ -8,9 +8,6 @@ const kewpie = new Kewpie();
 
 describe('kewpie', () => {
   const queueName = bandname();
-  let tag;
-  let directTag;
-  let channel;
 
   before(function () {
     this.timeout(5000);
@@ -22,13 +19,6 @@ describe('kewpie', () => {
     const ch = yield conn.createChannel();
     yield ch.purgeQueue(queueName);
     yield ch.purgeQueue(kewpie.opts.deadLetterQueue);
-    if (tag) yield kewpie.unsubscribe(tag);
-    if (directTag) yield channel.cancel(directTag);
-    tag, directTag = undefined;
-  });
-
-  after(function *() {
-    yield kewpie.close();
   });
 
   describe('publish', () => {
@@ -52,36 +42,29 @@ describe('kewpie', () => {
       }, {
         expiration: null
       })
-
-      const conn = yield amqp.connect(process.env.RABBIT_URL);
-      channel = yield conn.createConfirmChannel();
-      const { consumerTag } = yield channel.consume(queueName, function (msg) {
-        demand(msg.properties.expiration).be(undefined);
-      });
-      directTag = consumerTag;
     });
 
-    it('should gracefully handle invalid json', function *() {
+    it('should gracefully handle valid but unserialisable json', function *() {
       let thrown = false;
-
       const object = {};
       object.arr = [
         object, object
       ];
       object.arr.push(object.arr);
       object.obj = object;
-
       try {
         yield kewpie.publish(queueName, object);
       } catch (e) {
-        e.must.equal(kewpie.errors.invalidJsonError);
+        e.must.be(kewpie.errors.invalidJsonError);
         thrown = true;
       }
-      thrown.must.be(true)
+      thrown.must.be(true);
     });
   });
   describe('subscribe', () => {
     let taskName;
+    let tag;
+    let channel;
 
     beforeEach(function *() {
       taskName = bandname();
@@ -89,6 +72,10 @@ describe('kewpie', () => {
       const conn = yield amqp.connect(process.env.RABBIT_URL);
       channel = yield conn.createConfirmChannel();
     });
+
+    afterEach(() =>
+      kewpie.unsubscribe(tag)
+    );
 
     it('should be handed a job', (done) => {
       kewpie.subscribe(queueName, task => {
