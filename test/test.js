@@ -45,7 +45,7 @@ describe('kewpie', () => {
         oh: 'hai'
       }, {
         expiration: null
-      })
+      });
     });
 
     it('should gracefully handle valid but unserialisable json', function *() {

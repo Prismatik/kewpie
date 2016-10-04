@@ -144,7 +144,7 @@ function Kewpie(passedOpts = {}) {
       }
 
       return new Promise((resolve, reject) => {
-        const err = channel.publish(exchange, queue, buf, innerOpts, (err) => {
+        channel.publish(exchange, queue, buf, innerOpts, (err) => {
           if (err) return reject(err);
           return resolve(task);
         });
