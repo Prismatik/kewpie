@@ -30,7 +30,7 @@ function Kewpie(passedOpts = {}) {
     delayMS: 500
   };
 
-  const opts = Object.assign({}, passedOpts, defaultOpts);
+  const opts = Object.assign({}, defaultOpts, passedOpts);
 
   const {
     delayMS,
