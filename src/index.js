@@ -44,6 +44,8 @@ function Kewpie(passedOpts = {}) {
     enableDelayed
   } = opts;
 
+  if (enableDelayed) console.warn('Delayed sending requires the delayed message exchange plugin to RabbitMQ which is currently EXPERIMENTAL. See https://github.com/rabbitmq/rabbitmq-delayed-message-exchange#plugin-status for more details');
+
   const queueOpts = {
     maxPriority,
     durable: true,
