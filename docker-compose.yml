@@ -12,6 +12,6 @@ services:
     links:
       - rabbitmq
   rabbitmq:
-    image: rabbitmq:management
+    image: rafakato/rabbitmq-delayed-message-exchange:3.6.1-management
     ports:
       - 15672:15672

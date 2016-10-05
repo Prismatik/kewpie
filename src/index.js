@@ -27,7 +27,8 @@ function Kewpie(passedOpts = {}) {
     maxPriority: 10,
     defaultExpiration: 1000 * 60 * 60, // 1 hour
     maxConnectionAttempts: 10,
-    delayMS: 500
+    delayMS: 500,
+    enableDelayed: false
   };
 
   const opts = Object.assign({}, defaultOpts, passedOpts);
@@ -39,7 +40,8 @@ function Kewpie(passedOpts = {}) {
     maxPriority,
     deadLetterExchange,
     deadLetterQueue,
-    exchange
+    exchange,
+    enableDelayed
   } = opts;
 
   const queueOpts = {
@@ -77,11 +79,27 @@ function Kewpie(passedOpts = {}) {
    */
   function setup(ch, queues) {
     return co.wrap(function *() {
-      yield ch.assertExchange(exchange, 'topic', { durable: true });
+      const exchangeType = enableDelayed ? 'x-delayed-message' : 'topic';
+      const exchangeArgs = {};
+
+      if (enableDelayed) exchangeArgs['x-delayed-type'] = 'topic';
+
+      yield ch.assertExchange(
+        exchange,
+        exchangeType,
+        {
+          arguments: {
+            'x-delayed-type': 'topic'
+          },
+          durable: true
+        }
+      );
+
       yield Promise.all(queues.map(co.wrap(function *(queue) {
         yield ch.assertQueue(queue, queueOpts);
         yield ch.bindQueue(queue, exchange, queue);
       })));
+
       yield ch.assertExchange(deadLetterExchange, 'topic', { durable: true });
       yield ch.assertQueue(deadLetterQueue, { durable: true });
       yield ch.bindQueue(deadLetterQueue, deadLetterExchange, '#');
@@ -131,10 +149,13 @@ function Kewpie(passedOpts = {}) {
       const innerOpts = {
         priority: opts.priority || 0,
         persistent: true,
-        expiration: opts.expiration || defaultExpiration
+        expiration: opts.expiration || defaultExpiration,
+        headers: {}
       };
 
       if (opts.expiration === null) delete innerOpts.expiration;
+
+      if (opts.delay) innerOpts.headers['x-delay'] = opts.delay;
 
       let buf;
       try {

@@ -4,25 +4,32 @@ const Kewpie = require('../src/index');
 const bandname = require('bandname');
 const amqp = require('amqplib');
 
-const kewpie = new Kewpie();
-
 describe('kewpie', () => {
+  const kewpie = new Kewpie();
+
   const queueName = bandname();
+
+  let conn;
+  let ch;
 
   before(function () {
     this.timeout(5000);
     return kewpie.connect(process.env.RABBIT_URL, [queueName]);
   });
 
+  before(function *() {
+    conn = yield amqp.connect(process.env.RABBIT_URL);
+    ch = yield conn.createChannel();
+  });
+
   afterEach(function *() {
-    const conn = yield amqp.connect(process.env.RABBIT_URL);
-    const ch = yield conn.createChannel();
     yield ch.purgeQueue(queueName);
     yield ch.purgeQueue(kewpie.opts.deadLetterQueue);
   });
 
   after(function *() {
     yield kewpie.close();
+    yield ch.deleteExchange('kewpie');
   });
 
   describe('publish', () => {
@@ -206,6 +213,95 @@ describe('kewpie', () => {
           done();
         }, 500);
       });
+    });
+  });
+});
+
+describe('kewpie - delayed', () => {
+  const kewpie = new Kewpie({ enableDelayed: true });
+
+  const queueName = bandname();
+
+  let conn;
+  let ch;
+
+  before(function () {
+    this.timeout(5000);
+    return kewpie.connect(process.env.RABBIT_URL, [queueName]);
+  });
+
+  before(function *() {
+    conn = yield amqp.connect(process.env.RABBIT_URL);
+    ch = yield conn.createChannel();
+  });
+
+  afterEach(function *() {
+    yield ch.purgeQueue(queueName);
+    yield ch.purgeQueue(kewpie.opts.deadLetterQueue);
+  });
+
+  after(function *() {
+    yield kewpie.close();
+    yield ch.deleteExchange('kewpie');
+  });
+
+  describe('publish', () => {
+    it('should queue a task', () =>
+      kewpie.publish(queueName, {
+        oh: 'hai'
+      }, {
+        delay: 10
+      })
+    );
+  });
+
+  describe('subscribe', () => {
+    let taskName;
+    let tag;
+
+    beforeEach(() => {
+      taskName = bandname();
+    });
+
+    afterEach(() =>
+      kewpie.unsubscribe(tag)
+    );
+
+    it('should be handed a job', (done) => {
+      kewpie.subscribe(queueName, task => {
+        task.name.must.equal(taskName);
+        done();
+        return Promise.resolve();
+      })
+      .then(({ consumerTag }) => {
+        tag = consumerTag;
+      });
+
+      kewpie.publish(queueName, { name: taskName }, { delay: 10 });
+    });
+
+    it('should actually delay the sending', (done) => {
+      let elapsed = false;
+
+      setTimeout(() => {
+        elapsed = true;
+      }, 40);
+
+      kewpie.subscribe(queueName, task => {
+        try {
+          task.name.must.equal(taskName);
+          elapsed.must.be(true);
+        } catch (e) {
+          return done(e);
+        }
+        done();
+        return Promise.resolve();
+      })
+      .then(({ consumerTag }) => {
+        tag = consumerTag;
+      });
+
+      kewpie.publish(queueName, { name: taskName }, { delay: 50 });
     });
   });
 });
