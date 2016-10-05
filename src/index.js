@@ -136,6 +136,7 @@ function Kewpie(passedOpts = {}) {
    * @param {Object} [opts] - A set of opts to override defaults
    * @param {number} opts.priority - The priority of the message (defaults to 0)
    * @param {number} opts.expiration - The expiration time of the message in MS
+   * @param {number} opts.delay - The number of MS the exchange should wait before publishing the message to a queue for consumption
    * @returns {Promise}
    */
   function publish(queue, task, opts = {}) {

@@ -7,6 +7,7 @@
  * @property {number} passedOpts.defaultExpiration - The default expiration time for messages. This prevents unfulfillable tasks from clogging up the queue forever (in MS)
  * @property {number} passedOpts.maxConnectionAttempts - The maximum amount of times kewpie will attempt to connect to the RabbitMQ server before giving up and throwing
  * @property {number} passedOpts.delayMS - The delay in MS to wait between retrying operations before kewpie has successfully connected to the RabbitMQ server on initialisation
+ * @property {number} passedOpts.enableDelayed - Whether to enable delayed messaging by creating the main exchange as a delayed message exchange. This requires the experimental delayed messages plugin to RabbitMQ
  */
 
 /**
